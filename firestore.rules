@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidSearchConfig(data) {
+      return data.keys().hasAll(['userId', 'label', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.label is string && data.label.size() <= 200 &&
+             data.createdAt is number &&
+             data.get('id', '') is string && data.get('id', '').size() <= 128 &&
+             data.get('birthDate', '') is string && data.get('birthDate', '').size() <= 50 &&
+             data.get('birthTime', '') is string && data.get('birthTime', '').size() <= 50 &&
+             data.get('birthPlace', '') is string && data.get('birthPlace', '').size() <= 200 &&
+             data.get('timezone', '') is string && data.get('timezone', '').size() <= 100 &&
+             data.get('nakshatra', '') is string && data.get('nakshatra', '').size() <= 100 &&
+             data.get('paksha', '') is string && data.get('paksha', '').size() <= 100 &&
+             data.get('tithi', '') is string && data.get('tithi', '').size() <= 100 &&
+             data.get('lunarMonth', '') is string && data.get('lunarMonth', '').size() <= 100 &&
+             data.get('targetYearRange', '') is string && data.get('targetYearRange', '').size() <= 50;
+    }
+
+    match /users/{userId}/searches/{searchId} {
+      allow read, write: if false; // default deny
+      
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(searchId);
+      allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(searchId) && isValidSearchConfig(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(searchId) && isValidSearchConfig(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(searchId);
+    }
+  }
+}

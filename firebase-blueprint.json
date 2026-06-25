@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "SearchConfig": {
+      "title": "SearchConfig",
+      "description": "User's search configuration for astornomy/dharma",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "label": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "birthTime": { "type": "string" },
+        "birthPlace": { "type": "string" },
+        "timezone": { "type": "string" },
+        "nakshatra": { "type": "string" },
+        "paksha": { "type": "string" },
+        "tithi": { "type": "string" },
+        "lunarMonth": { "type": "string" },
+        "targetYearRange": { "type": "string" },
+        "createdAt": { "type": "number", "description": "Timestamp when this config was saved" }
+      },
+      "required": ["userId", "label", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/searches/{searchId}": {
+      "schema": { "$ref": "#/entities/SearchConfig" },
+      "description": "User's saved searches"
+    }
+  }
+}
