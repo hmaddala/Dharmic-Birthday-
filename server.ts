@@ -102,7 +102,11 @@ If the user asks a follow-up:
 - Maintain the same format and level of detail.
 
 Final instruction:
-Be accurate, careful, respectful, and practical. Your goal is to help the user identify the correct Hindu calendar day for celebrating their birthday tradition.`;
+Be accurate, careful, respectful, and practical. Your goal is to help the user identify the correct Hindu calendar day for celebrating their birthday tradition.
+
+Wish the app user a happy Dharma birthday or something in a Dharmic style in an innovative way, and add some good, uplifting words and blessings at the end of the results.`;
+
+const rateLimit = new Map<string, number[]>();
 
 async function startServer() {
   const app = express();
@@ -119,7 +123,7 @@ async function startServer() {
         return res.status(400).json({ error: "Gemini API Key is not set in the environment variables." });
       }
 
-      const ai = new GoogleGenAI({ 
+const ai = new GoogleGenAI({ 
         apiKey,
         httpOptions: {
           headers: {
@@ -128,6 +132,19 @@ async function startServer() {
         }
       });
       
+      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+      const now = Date.now();
+      const userRates = rateLimit.get(ip as string) || [];
+      const windowStart = now - 60000; // 1 minute window
+      const recentRates = userRates.filter(time => time > windowStart);
+      
+      if (recentRates.length >= 10) {
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+      
+      recentRates.push(now);
+      rateLimit.set(ip as string, recentRates);
+
       const contents = [];
       if (history && history.length > 0) {
         for (const msg of history) {
@@ -151,6 +168,136 @@ async function startServer() {
     } catch (error: any) {
       console.error(error);
       res.status(500).json({ error: error.message || "Failed to process the request." });
+    }
+  });
+
+  app.post("/api/blueprint", async (req, res) => {
+    try {
+      const { birthDate, birthTime, birthPlace, timezone } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ error: "Gemini API Key is not set." });
+      }
+      const ai = new GoogleGenAI({ apiKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+      const prompt = `You are an expert Vedic Astrologer. Based on the following birth details, accurately calculate the Vedic astrological parameters with maximum precision.
+Date: ${birthDate}
+Time: ${birthTime}
+Place: ${birthPlace}
+Timezone: ${timezone}
+
+Calculate the Exact Moon position to find the precise Nakshatra, Paksha, Tithi, and Lunar Month (Amanta/Purnimanta as appropriate, standardizing on Amanta where possible for lunar month). 
+
+Return ONLY a valid JSON object with exactly these keys: "nakshatra", "paksha", "tithi", "lunarMonth". 
+Do not include any markdown formatting like \`\`\`json. Just the raw JSON object.
+Example: {"nakshatra": "Ashwini", "paksha": "Shukla", "tithi": "Prathama", "lunarMonth": "Chaitra"}`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+      
+      let text = response.text || "";
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = {
+          nakshatra: text.match(/"nakshatra"\s*:\s*"([^"]+)"/i)?.[1] || "Unknown",
+          paksha: text.match(/"paksha"\s*:\s*"([^"]+)"/i)?.[1] || "Unknown",
+          tithi: text.match(/"tithi"\s*:\s*"([^"]+)"/i)?.[1] || "Unknown",
+          lunarMonth: text.match(/"lunarMonth"\s*:\s*"([^"]+)"/i)?.[1] || "Unknown",
+        };
+      }
+      res.json(data);
+    } catch (error: any) {
+      console.error("/api/blueprint error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate blueprint." });
+    }
+  });
+
+  const searchCache = new Map<string, { data: any, timestamp: number }>();
+  const reverseCache = new Map<string, { data: any, timestamp: number }>();
+  const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
+
+  app.get("/api/search", async (req, res) => {
+    try {
+      const { q } = req.query;
+      if (!q) return res.status(400).json({ error: "Query is required" });
+      
+      const queryStr = String(q).toLowerCase().trim();
+      const cached = searchCache.get(queryStr);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return res.json(cached.data);
+      }
+
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q as string)}&format=json&limit=8&addressdetails=1`, {
+        headers: {
+          'User-Agent': 'dharmic-birthday-app/1.0 (mhkgupta@gmail.com)',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      });
+      
+      if (!response.ok) {
+         if (response.status === 429) {
+             return res.json([]);
+         }
+         throw new Error(`Nominatim returned ${response.status}`);
+      }
+      
+      let data = await response.json();
+      
+      // Deduplicate results based on identical display names (often caused by OSM node vs relation duplicates)
+      const seenNames = new Set<string>();
+      data = data.filter((item: any) => {
+         if (!item.display_name) return true;
+         // Normalize name slightly to catch very similar duplicates
+         const normalized = item.display_name.toLowerCase().trim();
+         if (seenNames.has(normalized)) return false;
+         seenNames.add(normalized);
+         return true;
+      });
+
+      searchCache.set(queryStr, { data, timestamp: Date.now() });
+      res.json(data);
+    } catch (err: any) {
+      console.error("/api/search error:", err);
+      res.status(500).json({ error: "Failed to search location" });
+    }
+  });
+
+  app.get("/api/reverse", async (req, res) => {
+    try {
+      const { lat, lon } = req.query;
+      if (!lat || !lon) return res.status(400).json({ error: "lat and lon are required" });
+      
+      const cacheKey = `${lat},${lon}`;
+      const cached = reverseCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return res.json(cached.data);
+      }
+
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+        headers: {
+          'User-Agent': 'dharmic-birthday-app/1.0 (mhkgupta@gmail.com)',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      });
+      
+      if (!response.ok) {
+         if (response.status === 429) {
+             return res.json([]);
+         }
+         throw new Error(`Nominatim returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      reverseCache.set(cacheKey, { data, timestamp: Date.now() });
+      res.json(data);
+    } catch (err: any) {
+      console.error("/api/reverse error:", err);
+      res.status(500).json({ error: "Failed to reverse geocode" });
     }
   });
 

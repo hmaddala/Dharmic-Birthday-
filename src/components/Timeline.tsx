@@ -7,7 +7,7 @@ export type ProjectionDate = {
   weekday: string;
 };
 
-export const Timeline = ({ data }: { data: ProjectionDate[] }) => {
+export const Timeline = ({ data, dateFormat = 'DD-MM-YYYY' }: { data: ProjectionDate[], dateFormat?: string }) => {
   const d3Container = useRef(null);
 
   useEffect(() => {
@@ -77,11 +77,14 @@ export const Timeline = ({ data }: { data: ProjectionDate[] }) => {
         .text(d => {
            // Parse YYYY-MM-DD
            const parts = d.gregorianDate.split('-');
-           if(parts.length === 3) return `${parts[1]}/${parts[2]}`;
+           if(parts.length === 3) {
+             if (dateFormat === 'DD-MM-YYYY') return `${parts[2]}-${parts[1]}`;
+             return `${parts[1]}-${parts[2]}`; // MM-DD
+           }
            return d.gregorianDate;
         });
     }
-  }, [data]);
+  }, [data, dateFormat]);
 
   if (!data || data.length === 0) return null;
 
