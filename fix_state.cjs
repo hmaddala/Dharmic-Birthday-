@@ -1,54 +1,21 @@
 const fs = require('fs');
+let content = fs.readFileSync('src/App.tsx', 'utf8');
 
-let app = fs.readFileSync('src/App.tsx', 'utf-8');
+const oldState = `  const hasAllFourDetails = !!(nakshatra && paksha && tithi && lunarMonth);
+  const needsAiCalculation = !hasAllFourDetails && !isAiCalculated;
+  const requireApproval = isAiCalculated;
+  const isSubmitReady = isFormValid && hasAllFourDetails && (!requireApproval || acceptedBlueprint);`;
 
-// Replace totalSteps
-app = app.replace('const totalSteps = 4;', 'const totalSteps = 3;');
+const newState = `  const [acceptTerms, setAcceptTerms] = useState(false);
+  const isSubmitReady = isFormValid && acceptTerms;`;
 
-// Add states
-const statesToInsert = `
-  const [isBlueprintGenerated, setIsBlueprintGenerated] = useState(false);
-  const [isGeneratingBlueprint, setIsGeneratingBlueprint] = useState(false);
-  const [acceptedBlueprint, setAcceptedBlueprint] = useState(false);
-`;
-app = app.replace('const [isLoading, setIsLoading] = useState(false);', 'const [isLoading, setIsLoading] = useState(false);\n' + statesToInsert);
+content = content.replace(oldState, newState);
 
-// Add generateBlueprint function
-const functionToInsert = `
-  const generateBlueprint = async () => {
-    if (!birthDate || !birthTime || !birthPlace || !timezone) return;
-    setIsGeneratingBlueprint(true);
-    try {
-      const res = await fetch("/api/blueprint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ birthDate, birthTime, birthPlace, timezone })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setNakshatra(data.nakshatra || "Unknown");
-        setPaksha(data.paksha || "Unknown");
-        setTithi(data.tithi || "Unknown");
-        setLunarMonth(data.lunarMonth || "Unknown");
-        setIsBlueprintGenerated(true);
-      } else {
-        alert("Failed to generate blueprint. Please try again.");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Failed to generate blueprint.");
-    } finally {
-      setIsGeneratingBlueprint(false);
-    }
-  };
-`;
-app = app.replace('const handleSubmit = async (e: React.FormEvent) => {', functionToInsert + '\n  const handleSubmit = async (e: React.FormEvent) => {');
+const oldHooks = `  const [acceptedBlueprint, setAcceptedBlueprint] = useState(false);
+  const [isAiCalculated, setIsAiCalculated] = useState(false);
+  const [isCalculatingBlueprint, setIsCalculatingBlueprint] = useState(false);`;
 
-// Update isFormValid
-app = app.replace(
-  'const isFormValid = !!(birthDate && birthTime && birthPlace && timezone && targetYearRange);',
-  'const isFormValid = !!(birthDate && birthTime && birthPlace && timezone && targetYearRange && acceptedBlueprint);'
-);
+const newHooks = ``;
+content = content.replace(oldHooks, newHooks);
 
-fs.writeFileSync('src/App.tsx', app);
-console.log('App.tsx states and functions injected');
+fs.writeFileSync('src/App.tsx', content);

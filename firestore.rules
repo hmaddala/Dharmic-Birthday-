@@ -6,7 +6,7 @@ service cloud.firestore {
     }
 
     function isSignedIn() {
-      return request.auth != null && request.auth.token.email_verified == true;
+      return request.auth != null;
     }
     
     function isValidId(id) {
@@ -30,7 +30,9 @@ service cloud.firestore {
              data.get('paksha', '') is string && data.get('paksha', '').size() <= 100 &&
              data.get('tithi', '') is string && data.get('tithi', '').size() <= 100 &&
              data.get('lunarMonth', '') is string && data.get('lunarMonth', '').size() <= 100 &&
-             data.get('targetYearRange', '') is string && data.get('targetYearRange', '').size() <= 50;
+             data.get('targetYearRange', '') is string && data.get('targetYearRange', '').size() <= 50 &&
+             data.get('resultText', '') is string && data.get('resultText', '').size() <= 50000 &&
+             data.get('isSavedPermanently', false) is bool;
     }
 
     match /users/{userId}/searches/{searchId} {

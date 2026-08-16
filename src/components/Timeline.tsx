@@ -78,8 +78,12 @@ export const Timeline = ({ data, dateFormat = 'DD-MM-YYYY' }: { data: Projection
            // Parse YYYY-MM-DD
            const parts = d.gregorianDate.split('-');
            if(parts.length === 3) {
-             if (dateFormat === 'DD-MM-YYYY') return `${parts[2]}-${parts[1]}`;
-             return `${parts[1]}-${parts[2]}`; // MM-DD
+             let month, day;
+             if (parts[0].length === 4) { month = parts[1]; day = parts[2]; }
+             else { month = parts[1]; day = parts[0]; }
+             if (dateFormat === 'DD-MM-YYYY') return `${day}-${month}`;
+             if (dateFormat === 'MM-DD-YYYY') return `${month}-${day}`;
+             return `${month}-${day}`;
            }
            return d.gregorianDate;
         });

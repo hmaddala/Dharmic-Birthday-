@@ -34,14 +34,17 @@ import face9 from '../assets/images/testi_face_9_1785407258569.jpg';
 import face10 from '../assets/images/testi_face_10_1785407271529.jpg';
 
 type SlideData = 
-  | { type: 'info'; img: string; translationKeyId: number }
-  | { type: 'testimonial'; img: string; faceImg: string; translationKeyId: number };
+  | { type: 'info'; img: string; translationKeyId: number | string }
+  | { type: 'testimonial'; img: string; faceImg: string; translationKeyId: number | string };
+
+
+const mandatorySlides: SlideData[] = [
+  { type: 'info', img: cosmicImg, translationKeyId: '_req1' },
+  { type: 'info', img: chartImg, translationKeyId: '_req2' },
+  { type: 'info', img: mandalaImg, translationKeyId: '_req3' },
+];
 
 const baseSlides: SlideData[] = [
-  { type: 'info', img: panchangImg, translationKeyId: 15 },
-  { type: 'info', img: chartImg, translationKeyId: 16 },
-  { type: 'info', img: vedicChartImg, translationKeyId: 17 },
-
   { type: 'info', img: cosmicImg, translationKeyId: 0 },
   { type: 'info', img: chartImg, translationKeyId: 1 },
   { type: 'info', img: celebrationImg, translationKeyId: 2 },
@@ -85,7 +88,7 @@ export function WelcomeHero({ t }: { t: any }) {
 
   useEffect(() => {
     // Shuffle slides on mount
-    setSlides(shuffleArray(baseSlides));
+    setSlides([...mandatorySlides, ...shuffleArray(baseSlides)]);
   }, []);
 
   useEffect(() => {
@@ -171,22 +174,14 @@ export function WelcomeHero({ t }: { t: any }) {
          </div>
 
          <div className="p-6 sm:p-8 text-left space-y-8 bg-[#fdfcfb]">
-            {/* Required Details */}
-            <div className="space-y-3 bg-[#e6f4ff] p-5 rounded-md border border-[#90cdf4] shadow-sm mb-6">
-              <h3 className="text-lg font-bold text-[#2b6cb0] flex items-center gap-2">
-                <Target className="w-5 h-5 shrink-0" /> {t.heroRequiredTitle || "Only 3 Details Required"}
+            
+            {/* Core Details Panel */}
+            <div className="space-y-3 bg-[#fdfcfb] p-5 rounded-md border border-[#d1c4b2] shadow-sm">
+              <h3 className="text-lg font-bold text-[#8b4513] flex items-center gap-2">
+                <Sparkles className="w-5 h-5 shrink-0" /> {t.heroCoreTitle || "Only 3 Details Required"}
               </h3>
-              <div className="text-[#2c5282] text-[0.95rem] leading-relaxed font-medium space-y-2">
-                {t.heroRequiredDesc || (
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li><strong>Exact Date of Birth:</strong> Day, Month, and Year</li>
-                    <li><strong>Exact Time of Birth:</strong> Hours and Minutes</li>
-                    <li><strong>Place of Birth:</strong> City or coordinates</li>
-                  </ul>
-                )}
-                <p className="mt-2 text-[0.85rem] italic">
-                  Note: Nakshatra, Paksha, Tithi, and Lunar Month are optional! Our advanced AI models will calculate these four details for you accurately.
-                </p>
+              <div className="text-[#5c554a] text-[0.95rem] leading-relaxed font-medium space-y-2">
+                {t.heroCoreDesc || "No complex astrological knowledge is needed. Simply provide your Date of Birth, Time of Birth, and Place of Birth. Our AI will precisely calculate your cosmic blueprint."}
               </div>
             </div>
 

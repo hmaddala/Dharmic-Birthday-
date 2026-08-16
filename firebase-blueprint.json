@@ -17,6 +17,8 @@
         "tithi": { "type": "string" },
         "lunarMonth": { "type": "string" },
         "targetYearRange": { "type": "string" },
+        "resultText": { "type": "string" },
+        "isSavedPermanently": { "type": "boolean" },
         "createdAt": { "type": "number", "description": "Timestamp when this config was saved" }
       },
       "required": ["userId", "label", "createdAt"]

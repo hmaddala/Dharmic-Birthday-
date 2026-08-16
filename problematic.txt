@@ -1,0 +1,11 @@
+              </div>
+
+          </>
+)}
+          </form>
+          </div>
+          
+                    {(hasAllFourDetails && (!requireApproval || acceptedBlueprint)) && (
+<div className="p-4 lg:p-6 border-t border-[#e2d1b3] bg-[#fdfcfb]">
+            
+            
